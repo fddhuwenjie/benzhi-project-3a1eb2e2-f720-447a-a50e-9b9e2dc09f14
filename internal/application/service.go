@@ -19,12 +19,12 @@ type Service struct {
 
 func NewService(store Store) *Service { return &Service{store: store, now: time.Now} }
 
-func (s *Service) existingRequest(ctx context.Context, caseID, requestID string) *IdempotencyRecord {
+func (s *Service) existingRequest(ctx context.Context, caseID, requestID string) (*IdempotencyRecord, error) {
 	record, err := s.store.FindRequest(ctx, caseID, requestID)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return record
+	return record, nil
 }
 
 func (s *Service) Create(ctx context.Context, command CreateCommand) (*MutationResult, error) {
@@ -32,7 +32,11 @@ func (s *Service) Create(ctx context.Context, command CreateCommand) (*MutationR
 		return nil, err
 	}
 	caseID := newID("case")
-	if existing := s.existingRequest(ctx, "", command.RequestID); existing != nil {
+	existing, err := s.existingRequest(ctx, "", command.RequestID)
+	if err != nil {
+		return nil, s.mapStoreError(err)
+	}
+	if existing != nil {
 		if existing.Operation != "create" {
 			return nil, &Error{Code: "request_id_reused", Message: "request_id 已用于其他操作"}
 		}
@@ -61,7 +65,11 @@ func (s *Service) mutate(ctx context.Context, caseID, operation, eventType strin
 	if strings.TrimSpace(caseID) == "" {
 		return nil, &Error{Code: "validation_failed", Message: "批次标识不能为空"}
 	}
-	if record := s.existingRequest(ctx, caseID, meta.RequestID); record != nil {
+	record, err := s.existingRequest(ctx, caseID, meta.RequestID)
+	if err != nil {
+		return nil, s.mapStoreError(err)
+	}
+	if record != nil {
 		if record.Operation != operation {
 			return nil, &Error{Code: "request_id_reused", Message: "request_id 已用于其他操作"}
 		}
@@ -86,8 +94,8 @@ func (s *Service) mutate(ctx context.Context, caseID, operation, eventType strin
 	if err != nil {
 		return nil, err
 	}
-	record := IdempotencyRecord{RequestID: meta.RequestID, CaseID: caseID, Operation: operation, Revision: item.Revision}
-	if err := s.store.Commit(ctx, meta.ExpectedRevision, item, event, record); err != nil {
+	newRecord := IdempotencyRecord{RequestID: meta.RequestID, CaseID: caseID, Operation: operation, Revision: item.Revision}
+	if err := s.store.Commit(ctx, meta.ExpectedRevision, item, event, newRecord); err != nil {
 		return nil, s.mapStoreError(err)
 	}
 	return &MutationResult{Case: domain.Clone(item)}, nil
