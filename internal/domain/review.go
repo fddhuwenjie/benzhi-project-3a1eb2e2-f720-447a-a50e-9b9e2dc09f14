@@ -69,30 +69,37 @@ func (c *RetirementCase) CorrectTargeted(opinionID string, patch map[string]any,
 			return Invalid("field_not_allowed", "该字段不在退回意见允许范围内："+field)
 		}
 	}
+	// 先校验全部补正字段并暂存到局部变量，确认无误后再写入聚合，避免校验失败时留下半成品状态。
+	site, reason, plannedDate := c.Site, c.Reason, c.PlannedDate
 	for field, value := range patch {
 		switch field {
 		case "site":
-			if v, ok := value.(string); ok {
-				c.Site = strings.TrimSpace(v)
-			} else {
+			v, ok := value.(string)
+			if !ok {
 				return Invalid("validation_failed", "site 必须为文本")
 			}
+			trimmed := strings.TrimSpace(v)
+			if trimmed == "" {
+				return Invalid("validation_failed", "场所不能为空")
+			}
+			site = trimmed
 		case "reason":
-			if v, ok := value.(string); ok {
-				c.Reason = strings.TrimSpace(v)
-			} else {
+			v, ok := value.(string)
+			if !ok {
 				return Invalid("validation_failed", "reason 必须为文本")
 			}
+			reason = strings.TrimSpace(v)
 		case "planned_date":
-			if v, ok := value.(string); ok {
-				c.PlannedDate = v
-			} else {
+			v, ok := value.(string)
+			if !ok {
 				return Invalid("validation_failed", "planned_date 必须为日期")
 			}
+			plannedDate = v
 		default:
 			return Invalid("field_not_allowed", "不支持补正字段："+field)
 		}
 	}
+	c.Site, c.Reason, c.PlannedDate = site, reason, plannedDate
 	c.Risk = nil
 	c.Status = StatusCounted
 	c.touch(now)
