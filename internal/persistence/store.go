@@ -62,6 +62,12 @@ func (s *Store) rememberMissingRequest(requestID string) {
 	s.missingRequests[requestID] = struct{}{}
 }
 
+func (s *Store) forgetRequest(requestID string) {
+	s.guard.Lock()
+	defer s.guard.Unlock()
+	delete(s.missingRequests, requestID)
+}
+
 func (s *Store) snapshotPath(caseID string) string {
 	return filepath.Join(s.directory, "cases", caseID+".json")
 }

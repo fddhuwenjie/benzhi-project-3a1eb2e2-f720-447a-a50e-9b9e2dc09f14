@@ -50,5 +50,6 @@ func (s *Store) Commit(ctx context.Context, expected int64, item *domain.Retirem
 	if err := writeSnapshotAtomic(path, snapshot{Case: domain.Clone(item), Requests: requests}); err != nil {
 		return err
 	}
+	s.forgetRequest(record.RequestID)
 	return nil
 }

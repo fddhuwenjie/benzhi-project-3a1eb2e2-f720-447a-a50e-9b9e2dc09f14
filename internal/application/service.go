@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"benzhi-project-3a1eb2e2-f720-447a-a50e-9b9e2dc09f14/internal/audit"
@@ -15,6 +16,7 @@ import (
 type Service struct {
 	store Store
 	now   func() time.Time
+	mu    sync.Mutex
 }
 
 func NewService(store Store) *Service { return &Service{store: store, now: time.Now} }
@@ -23,13 +25,15 @@ func (s *Service) Create(ctx context.Context, command CreateCommand) (*MutationR
 	if err := validateMeta(command.CommandMeta, "safety_admin"); err != nil {
 		return nil, err
 	}
-	caseID := newID("case")
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if existing, err := s.store.FindRequest(ctx, "", command.RequestID); err == nil && existing != nil {
 		if existing.Operation != "create" {
 			return nil, &Error{Code: "request_id_reused", Message: "request_id 已用于其他操作"}
 		}
 		return s.replayed(ctx, existing)
 	}
+	caseID := newID("case")
 	now := s.now().UTC()
 	item, err := domain.NewCase(domain.CreateInput{ID: caseID, Site: command.Site, Reason: command.Reason, OwnerID: command.OwnerID, PlannedDate: command.PlannedDate, Materials: command.Materials}, now)
 	if err != nil {
