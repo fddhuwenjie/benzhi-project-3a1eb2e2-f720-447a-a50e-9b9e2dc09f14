@@ -13,6 +13,33 @@ import (
 	"benzhi-project-3a1eb2e2-f720-447a-a50e-9b9e2dc09f14/internal/domain"
 )
 
+// errUnsafeCaseID is returned for case identifiers that could escape the cases
+// directory (for example by containing ".." or path separators). Callers map
+// this to their not-found semantics so no external file is ever accessed.
+var errUnsafeCaseID = errors.New("invalid case identifier")
+
+// safeCaseID reports whether caseID is a plain filename component that cannot
+// traverse out of the cases directory. It rejects empty values, path
+// separators (both "/" and the OS separator), and any component equal to or
+// containing "." or ".." before any file is accessed.
+func safeCaseID(caseID string) error {
+	if caseID == "" {
+		return errUnsafeCaseID
+	}
+	if strings.ContainsAny(caseID, `/\`) {
+		return errUnsafeCaseID
+	}
+	for _, part := range strings.Split(caseID, string(filepath.Separator)) {
+		if part == "." || part == ".." {
+			return errUnsafeCaseID
+		}
+	}
+	if caseID == "." || caseID == ".." {
+		return errUnsafeCaseID
+	}
+	return nil
+}
+
 type Store struct {
 	directory string
 	guard     sync.Mutex
@@ -55,6 +82,9 @@ func (s *Store) Load(ctx context.Context, caseID string) (*domain.RetirementCase
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if err := safeCaseID(caseID); err != nil {
+		return nil, &application.NotFoundError{CaseID: caseID}
+	}
 	lock := s.caseLock(caseID)
 	lock.Lock()
 	defer lock.Unlock()
@@ -72,6 +102,9 @@ func (s *Store) Events(ctx context.Context, caseID string) ([]audit.Event, error
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if err := safeCaseID(caseID); err != nil {
+		return []audit.Event{}, nil
+	}
 	lock := s.caseLock(caseID)
 	lock.Lock()
 	defer lock.Unlock()
@@ -83,6 +116,9 @@ func (s *Store) FindRequest(ctx context.Context, caseID, requestID string) (*app
 		return nil, err
 	}
 	if caseID != "" {
+		if err := safeCaseID(caseID); err != nil {
+			return nil, nil
+		}
 		lock := s.caseLock(caseID)
 		lock.Lock()
 		defer lock.Unlock()

@@ -14,6 +14,12 @@ func (s *Store) Commit(ctx context.Context, expected int64, item *domain.Retirem
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if err := safeCaseID(item.ID); err != nil {
+		if expected == 0 {
+			return &application.RevisionConflictError{Current: 0}
+		}
+		return &application.NotFoundError{CaseID: item.ID}
+	}
 	lock := s.caseLock(item.ID)
 	lock.Lock()
 	defer lock.Unlock()
