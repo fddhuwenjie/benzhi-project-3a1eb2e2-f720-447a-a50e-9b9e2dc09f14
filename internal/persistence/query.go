@@ -20,7 +20,11 @@ func (s *Store) List(ctx context.Context, filter application.ListFilter) ([]*dom
 	cached, ok := s.queries[filter]
 	s.queryMu.RUnlock()
 	if ok {
-		return append([]*domain.RetirementCase(nil), cached.items...), cached.total, nil
+		results := make([]*domain.RetirementCase, len(cached.items))
+		for i, item := range cached.items {
+			results[i] = domain.Clone(item)
+		}
+		return results, cached.total, nil
 	}
 	entries, err := os.ReadDir(filepath.Join(s.directory, "cases"))
 	if err != nil {
@@ -80,8 +84,12 @@ func (s *Store) List(ctx context.Context, filter application.ListFilter) ([]*dom
 		end = total
 	}
 	result := items[start:end]
+	cloned := make([]*domain.RetirementCase, len(result))
+	for i, item := range result {
+		cloned[i] = domain.Clone(item)
+	}
 	s.queryMu.Lock()
-	s.queries[filter] = cachedList{items: result, total: total}
+	s.queries[filter] = cachedList{items: cloned, total: total}
 	s.queryMu.Unlock()
 	return result, total, nil
 }
