@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>实验室受控材料退役销毁见证台</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar"><div><span class="brand-mark">控</span><div><h1>受控材料退役销毁见证台</h1><p>安全合规 · 双人见证 · 不可变归档</p></div></div><button id="new-case" class="primary">新建批次</button></header>
+  <main class="workspace"><aside class="case-nav"><div class="nav-head"><h2>退役批次</h2><span id="case-total">0 项</span></div><label class="filter-label" for="status-filter">状态筛选</label><select id="status-filter"><option value="">全部状态</option><option value="draft">草稿</option><option value="counted">已清点</option><option value="pending_review">待审查</option><option value="approved">已批准</option><option value="destroyed">已销毁</option><option value="remediation">待补救</option><option value="verified">已验证</option><option value="archived">已归档</option></select><div id="case-list" class="case-list" aria-live="polite"></div></aside><section id="detail" class="detail empty-state"><div><span class="empty-icon">档</span><h2>选择一个退役批次</h2><p>查看材料清单、当前处理步骤和完整审计记录。</p></div></section></main>
+  <dialog id="create-dialog"><form id="create-form" method="dialog"><div class="dialog-head"><div><h2>建立退役批次</h2><p>登记场所、责任人和受控材料。</p></div><button type="button" class="icon-button" data-close aria-label="关闭">×</button></div><div class="form-grid"><label>场所<input name="site" required placeholder="例如：化学楼 B203"></label><label>责任人 ID<input name="owner_id" required placeholder="例如：owner-01"></label><label class="wide">退役原因<textarea name="reason" required placeholder="说明材料退役背景"></textarea></label><label>计划日期<input name="planned_date" type="date" required></label></div><div class="section-title"><h3>材料条目</h3><button type="button" id="add-material" class="secondary">添加材料</button></div><div id="material-rows"></div><div id="create-errors" class="form-errors" role="alert"></div><div class="dialog-actions"><button type="button" data-close class="secondary">取消</button><button type="submit" class="primary">创建草稿</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <template id="material-template"><fieldset class="material-row"><input name="material_code" required placeholder="材料编码"><input name="display_name" required placeholder="材料名称"><select name="hazard_class"><option value="general">一般</option><option value="flammable">易燃</option><option value="corrosive">腐蚀</option><option value="toxic">有毒</option><option value="reactive">反应性</option><option value="biohazard">生物危害</option></select><input name="declared_quantity" type="number" step="0.001" min="0.001" required placeholder="数量"><input name="unit" required placeholder="单位"><select name="package_condition"><option value="intact">完好</option><option value="damaged">受损</option><option value="leaking">泄漏</option></select><input name="disposal_method" required placeholder="计划处置方式"><button type="button" class="remove-row icon-button" aria-label="移除材料">×</button></fieldset></template>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
